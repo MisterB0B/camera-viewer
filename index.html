@@ -441,6 +441,19 @@
     // Splash
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500);
     
+    // === BACKUP FUNCTION (APP STANDARD) ===
+    function backupAllData() {
+      try {
+        const backup = { version: '2026.02.06', app: 'camera-viewer', exportedAt: new Date().toISOString(), ltsSettings: localStorage.getItem('ltsSettings') };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `camera-viewer-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        alert('✅ Backup downloaded!');
+      } catch(e) { alert('Backup error: ' + e.message); }
+    }
+    
     // Demo cameras (replace with real LTS feeds)
     let cameras = [
       { id: 1, name: 'Entrance Gate', venue: 'katy', status: 'online' },
