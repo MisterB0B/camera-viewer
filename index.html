@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Viewer | The Light Park</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a25;
+      --border: #2a2a3a;
+      --text: #f0f0f5;
+      --text-dim: #8888a0;
+      --purple: #a855f7;
+      --teal: #06d6a0;
+      --red: #ef4444;
+      --green: #22c55e;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    
+    /* Splash */
+    #splash {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100vh;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash .logo {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .header h1 span {
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .venue-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    
+    .layout-btns {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .layout-btn {
+      width: 36px;
+      height: 36px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+    
+    .layout-btn:hover { border-color: var(--purple); color: var(--text); }
+    .layout-btn.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+    
+    /* Camera Grid */
+    .camera-grid {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+    }
+    
+    .grid-1 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-9 { grid-template-columns: repeat(3, 1fr); }
+    
+    @media (max-width: 768px) {
+      .grid-4, .grid-9 { grid-template-columns: repeat(2, 1fr); }
+    }
+    
+    @media (max-width: 500px) {
+      .grid-4, .grid-9 { grid-template-columns: 1fr; }
+    }
+    
+    .camera-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    
+    .camera-card:hover {
+      border-color: var(--purple);
+      box-shadow: 0 8px 30px rgba(168, 85, 247, 0.2);
+    }
+    
+    .camera-feed {
+      aspect-ratio: 16/9;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .camera-feed img, .camera-feed video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .camera-placeholder {
+      text-align: center;
+      color: var(--text-dim);
+    }
+    
+    .camera-placeholder .icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    
+    .camera-placeholder p {
+      font-size: 13px;
+    }
+    
+    .camera-live {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: var(--red);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .camera-live::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .camera-fullscreen {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      background: rgba(0,0,0,0.6);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .camera-card:hover .camera-fullscreen { opacity: 1; }
+    
+    .camera-info {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .camera-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .camera-location {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    
+    .camera-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .status-dot.online { background: var(--green); }
+    .status-dot.offline { background: var(--red); }
+    
+    /* Settings Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+    }
+    
+    .modal h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      display: block;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--purple);
+    }
+    
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      color: #000;
+    }
+    
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    
+    /* No cameras message */
+    .no-cameras {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-dim);
+    }
+    
+    .no-cameras .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    .no-cameras h3 {
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    
+    .add-camera-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, var(--purple), var(--teal));
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash -->
+  <div id="splash">
+    <div class="logo">📹 CAMERAS</div>
+  </div>
+  
+  <!-- Header -->
+  <header class="header">
+    <h1>📹 <span>Camera Viewer</span></h1>
+    <select class="venue-select" id="venueSelect" onchange="filterVenue()">
+      <option value="all">All Venues</option>
+      <option value="katy">Katy</option>
+      <option value="spring">Spring</option>
+      <option value="selma">Selma</option>
+      <option value="missions">Missions</option>
+      <option value="arlington">Arlington</option>
+      <option value="frisco">Frisco</option>
+      <option value="roundrock">Round Rock</option>
+      <option value="okc">Oklahoma City</option>
+    </select>
+    <div class="layout-btns">
+      <button class="layout-btn" onclick="setLayout(1)" title="1 Camera">▣</button>
+      <button class="layout-btn active" onclick="setLayout(4)" title="4 Cameras">⊞</button>
+      <button class="layout-btn" onclick="setLayout(9)" title="9 Cameras">⊟</button>
+      <button class="layout-btn" onclick="openSettings()" title="Settings">⚙️</button>
+    </div>
+  </header>
+  
+  <!-- Camera Grid -->
+  <div class="camera-grid grid-4" id="cameraGrid">
+    <!-- Cameras populated by JS -->
+  </div>
+  
+  <!-- No Cameras -->
+  <div class="no-cameras" id="noCameras" style="display: none;">
+    <div class="icon">📹</div>
+    <h3>No Cameras Configured</h3>
+    <p>Add your LTS camera RTSP URLs to get started.</p>
+    <button class="add-camera-btn" onclick="openSettings()">+ Add Camera</button>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h2>⚙️ Camera Settings</h2>
+      <div class="form-group">
+        <label class="form-label">LTS Server URL</label>
+        <input type="text" class="form-input" id="ltsServer" placeholder="rtsp://192.168.1.100:554">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-input" id="ltsUser" placeholder="admin">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="ltsPass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Proxy URL (for RTSP → HLS)</label>
+        <input type="text" class="form-input" id="proxyUrl" placeholder="https://your-proxy.com/stream/">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Splash
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500);
+    
+    // Demo cameras (replace with real LTS feeds)
+    let cameras = [
+      { id: 1, name: 'Entrance Gate', venue: 'katy', status: 'online' },
+      { id: 2, name: 'Ticket Tent', venue: 'katy', status: 'online' },
+      { id: 3, name: 'Exit Lane', venue: 'katy', status: 'online' },
+      { id: 4, name: 'Parking Lot', venue: 'katy', status: 'offline' },
+      { id: 5, name: 'Entrance Gate', venue: 'spring', status: 'online' },
+      { id: 6, name: 'Ticket Tent', venue: 'spring', status: 'online' },
+      { id: 7, name: 'Entrance Gate', venue: 'arlington', status: 'online' },
+      { id: 8, name: 'Ticket Tent', venue: 'arlington', status: 'online' },
+    ];
+    
+    const venueNames = {
+      katy: 'Katy',
+      spring: 'Spring',
+      selma: 'Selma',
+      missions: 'Missions',
+      arlington: 'Arlington',
+      frisco: 'Frisco',
+      roundrock: 'Round Rock',
+      okc: 'Oklahoma City'
+    };
+    
+    let currentLayout = 4;
+    let currentVenue = 'all';
+    
+    function renderCameras() {
+      const grid = document.getElementById('cameraGrid');
+      const noCams = document.getElementById('noCameras');
+      
+      let filtered = currentVenue === 'all' 
+        ? cameras 
+        : cameras.filter(c => c.venue === currentVenue);
+      
+      if (filtered.length === 0) {
+        grid.style.display = 'none';
+        noCams.style.display = 'block';
+        return;
+      }
+      
+      grid.style.display = 'grid';
+      noCams.style.display = 'none';
+      
+      grid.innerHTML = filtered.map(cam => `
+        <div class="camera-card" data-venue="${cam.venue}">
+          <div class="camera-feed">
+            <div class="camera-placeholder">
+              <div class="icon">📹</div>
+              <p>Camera ${cam.id}<br>${cam.status === 'offline' ? '⚠️ Offline' : 'Connecting...'}</p>
+            </div>
+            ${cam.status === 'online' ? '<div class="camera-live">LIVE</div>' : ''}
+            <button class="camera-fullscreen" onclick="goFullscreen(${cam.id})">⛶</button>
+          </div>
+          <div class="camera-info">
+            <div>
+              <div class="camera-name">${cam.name}</div>
+              <div class="camera-location">${venueNames[cam.venue]}</div>
+            </div>
+            <div class="camera-status">
+              <div class="status-dot ${cam.status}"></div>
+              ${cam.status}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function setLayout(n) {
+      currentLayout = n;
+      const grid = document.getElementById('cameraGrid');
+      grid.className = `camera-grid grid-${n}`;
+      document.querySelectorAll('.layout-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', [1,4,9][i] === n);
+      });
+    }
+    
+    function filterVenue() {
+      currentVenue = document.getElementById('venueSelect').value;
+      renderCameras();
+    }
+    
+    function openSettings() {
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+    
+    function saveSettings() {
+      const server = document.getElementById('ltsServer').value;
+      const user = document.getElementById('ltsUser').value;
+      const pass = document.getElementById('ltsPass').value;
+      const proxy = document.getElementById('proxyUrl').value;
+      
+      localStorage.setItem('ltsSettings', JSON.stringify({ server, user, pass, proxy }));
+      closeSettings();
+      alert('Settings saved! Camera feeds will connect on next reload.');
+    }
+    
+    function goFullscreen(camId) {
+      // TODO: Implement fullscreen view
+      alert('Fullscreen view for Camera ' + camId);
+    }
+    
+    // Load settings
+    const saved = localStorage.getItem('ltsSettings');
+    if (saved) {
+      const s = JSON.parse(saved);
+      document.getElementById('ltsServer').value = s.server || '';
+      document.getElementById('ltsUser').value = s.user || '';
+      document.getElementById('ltsPass').value = s.pass || '';
+      document.getElementById('proxyUrl').value = s.proxy || '';
+    }
+    
+    // Init
+    renderCameras();
+  </script>
+</body>
+</html>
