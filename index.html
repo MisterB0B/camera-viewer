@@ -555,8 +555,38 @@
     }
     
     function goFullscreen(camId) {
-      // TODO: Implement fullscreen view
-      alert('Fullscreen view for Camera ' + camId);
+      const cam = cameras.find(c => c.id === camId);
+      if (!cam) return;
+      
+      // Create fullscreen overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'fsOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+      
+      overlay.innerHTML = `
+        <div style="position:absolute;top:20px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:white;font-size:18px;font-weight:600;">${cam.name} - ${cam.location}</span>
+          <button onclick="closeFullscreen()" style="background:#ef4444;border:none;color:white;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;">✕ Close</button>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;max-height:calc(100vh - 100px);">
+          <img src="https://via.placeholder.com/1920x1080/1a1a25/666?text=${encodeURIComponent(cam.name)}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="${cam.name}">
+        </div>
+        <div style="padding:16px;color:#888;font-size:12px;">Press ESC or click Close to exit fullscreen</div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      // ESC key handler
+      const escHandler = (e) => {
+        if (e.key === 'Escape') closeFullscreen();
+      };
+      document.addEventListener('keydown', escHandler);
+      overlay.dataset.escHandler = 'true';
+    }
+    
+    function closeFullscreen() {
+      const overlay = document.getElementById('fsOverlay');
+      if (overlay) overlay.remove();
     }
     
     // Load settings
